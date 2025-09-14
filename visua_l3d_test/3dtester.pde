@@ -1,62 +1,71 @@
 import processing.serial.*;
 
 Serial myPort;
-float roll = 0, pitch = 0, yaw = 0;
+float roll, pitch, yaw;
+float baseRoll, basePitch, baseYaw;
+boolean calibrated = false;
 
 void setup() {
   size(800, 600, P3D);
-  println(Serial.list()); 
-  
-  // Ganti index sesuai hasil Serial.list(), biasanya [0] = "/dev/ttyACM0"
-  myPort = new Serial(this, Serial.list()[0], 115200);  
-  myPort.bufferUntil('\n');
+  myPort = new Serial(this, "/dev/ttyACM0", 115200); // sesuaikan port
 }
 
 void draw() {
-  background(30);
+  background(50);
   lights();
-  
-  translate(width/2, height/2, 0);
-  
-  // Rotasi drone sesuai data dari Arduino
-  rotateX(radians(pitch));
-  rotateY(radians(yaw));
-  rotateZ(radians(roll));
-  
-  // Badan drone (kotak)
-  fill(100, 150, 255);
-  box(60, 10, 200);
-  
-  // Lengan drone (X-axis)
-  pushMatrix();
-  rotateZ(HALF_PI);
-  fill(255, 100, 100);
-  box(200, 10, 60);
-  popMatrix();
-  
-  // Motor (lingkaran kecil di ujung-ujung)
-  drawMotor(100, 0, 0);
-  drawMotor(-100, 0, 0);
-  drawMotor(0, 0, 100);
-  drawMotor(0, 0, -100);
-}
 
-void drawMotor(float x, float y, float z) {
+  translate(width/2, height/2, 0);
+  rotateY(radians(yaw));
+  rotateX(radians(pitch));
+  rotateZ(radians(roll));
+
+  // Drone body
+  fill(100, 200, 255);
+  box(150, 20, 150);
+
+  // Drone arms
+  fill(255, 0, 0);
   pushMatrix();
-  translate(x, y, z);
-  fill(0, 200, 0);
+  translate(-75, 0, -75);
+  sphere(20); // motor
+  popMatrix();
+
+  pushMatrix();
+  translate(75, 0, -75);
+  sphere(20);
+  popMatrix();
+
+  pushMatrix();
+  translate(-75, 0, 75);
+  sphere(20);
+  popMatrix();
+
+  pushMatrix();
+  translate(75, 0, 75);
   sphere(20);
   popMatrix();
 }
 
-void serialEvent(Serial myPort) {
-  String data = trim(myPort.readStringUntil('\n'));
-  if (data != null) {
-    String[] values = split(data, ',');
+void serialEvent(Serial p) {
+  String inData = p.readStringUntil('\n');
+  if (inData != null) {
+    inData = trim(inData);
+    String[] values = split(inData, '\t'); // atau ',' sesuai Arduino
     if (values.length == 3) {
-      roll = float(values[0]);
-      pitch = float(values[1]);
-      yaw = float(values[2]);
+      float rawRoll  = float(values[0].split(": ")[1]);
+      float rawPitch = float(values[1].split(": ")[1]);
+      float rawYaw   = float(values[2].split(": ")[1]);
+
+      if (!calibrated) {
+        baseRoll = rawRoll;
+        basePitch = rawPitch;
+        baseYaw = rawYaw;
+        calibrated = true;
+      }
+
+      roll = rawRoll - baseRoll;
+      pitch = rawPitch - basePitch;
+      yaw = rawYaw - baseYaw;
     }
   }
 }
