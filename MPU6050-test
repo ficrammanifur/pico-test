@@ -1,0 +1,71 @@
+#include "Wire.h"
+#include "MPU6050.h"
+#include "I2Cdev.h"
+
+MPU6050 accelgyro(0x68);
+
+int16_t ax, ay, az, gx, gy, gz;
+
+// Masukkan offsets dari hasil kalibrasi
+int ax_offset = -7786;
+int ay_offset = -5677;
+int az_offset = 8642;
+int gx_offset = -29;
+int gy_offset = -22;
+int gz_offset = -71;
+
+float dt = 0.01; // 10ms per loop
+float roll = 0, pitch = 0, yaw = 0;
+float alpha = 0.98; // filter gyro + accel
+
+unsigned long timer;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  accelgyro.initialize();
+
+  // Apply offsets
+  accelgyro.setXAccelOffset(ax_offset);
+  accelgyro.setYAccelOffset(ay_offset);
+  accelgyro.setZAccelOffset(az_offset);
+  accelgyro.setXGyroOffset(gx_offset);
+  accelgyro.setYGyroOffset(gy_offset);
+  accelgyro.setZGyroOffset(gz_offset);
+
+  timer = micros();
+}
+
+void loop() {
+  accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+  // konversi gyro ke deg/s
+  float gx_d = gx / 131.0;
+  float gy_d = gy / 131.0;
+  float gz_d = gz / 131.0;
+
+  // konversi accelerometer ke g
+  float ax_g = ax / 16384.0;
+  float ay_g = ay / 16384.0;
+  float az_g = az / 16384.0;
+
+  // hitung roll & pitch dari accel
+  float roll_acc = atan2(ay_g, az_g) * 57.2958;
+  float pitch_acc = atan2(-ax_g, sqrt(ay_g*ay_g + az_g*az_g)) * 57.2958;
+
+  // delta time
+  unsigned long now = micros();
+  dt = (now - timer)/1000000.0;
+  timer = now;
+
+  // gabungkan gyro + accel (complimentary filter)
+  roll = alpha * (roll + gx_d * dt) + (1 - alpha) * roll_acc;
+  pitch = alpha * (pitch + gy_d * dt) + (1 - alpha) * pitch_acc;
+  yaw += gz_d * dt; // yaw hanya dari gyro
+
+  Serial.print("Roll: "); Serial.print(roll);
+  Serial.print("\tPitch: "); Serial.print(pitch);
+  Serial.print("\tYaw: "); Serial.println(yaw);
+
+  delay(10); // 100Hz update
+}
