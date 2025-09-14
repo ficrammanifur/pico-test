@@ -10,12 +10,12 @@ MPU6050 mpu(0x68);
 //=====================
 // Offsets hasil kalibrasi
 //=====================
-int16_t ax_offset = -7786;
-int16_t ay_offset = -2000;
-int16_t az_offset = 8642;
-int16_t gx_offset = 0;
-int16_t gy_offset = 0;
-int16_t gz_offset = 0;
+int16_t ax_offset = -7477;
+int16_t ay_offset = -5665;
+int16_t az_offset = 8937;
+int16_t gx_offset = -28;
+int16_t gy_offset = -21;
+int16_t gz_offset = -71;
 
 //=====================
 // Variabel sensor
